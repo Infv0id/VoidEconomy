@@ -1,0 +1,93 @@
+name: VoidEconomy
+version: '7.1.0'
+main: com.voidplugin.economy.VoidEconomyPlugin
+api-version: '26.1.2'
+author: VoidPlugin
+description: A lightweight, persistent economy for Paper servers.
+
+commands:
+  balance:
+    description: View an account balance.
+    usage: /balance [player]
+    aliases: [bal, money]
+  pay:
+    description: Pay another player.
+    usage: /pay <player> <amount>
+  eco:
+    description: Manage economy accounts.
+    usage: /eco <give|take|set|reset> <player> [amount]
+  menu:
+    description: Open the server mechanics hub.
+    usage: /menu
+    aliases: [hub]
+  bank:
+    description: Open your VoidEconomy bank.
+    usage: /bank
+  baltop:
+    description: Open the richest-player leaderboard.
+    usage: /baltop
+  balprivacy:
+    description: Toggle your leaderboard visibility.
+    usage: /balprivacy
+  admin:
+    description: Open the economy administration player search.
+    usage: /admin [auctions|orders|inspect|give|take|set|reset|reload] [player] [amount]
+    permission: voideconomy.admin
+  ve:
+    description: VoidEconomy help and administration.
+    usage: /ve <help|admin>
+  auction:
+    description: Open the player auction house.
+    usage: /auction
+    aliases: [ah]
+  bounty:
+    description: Open the player bounty system.
+    usage: /bounty
+  orders:
+    description: Open the player buy-order marketplace.
+    usage: /orders
+    aliases: [order, market]
+  sell:
+    description: Sell configured resources to the floating server market.
+    usage: /sell [hand|all|price|prices]
+
+permissions:
+  voideconomy.balance:
+    default: true
+  voideconomy.balance.others:
+    default: op
+  voideconomy.pay:
+    default: true
+  voideconomy.admin:
+    default: op
+    children:
+      voideconomy.admin.sell: true
+      voideconomy.admin.statistics: true
+  voideconomy.menu:
+    default: true
+  voideconomy.bank:
+    default: true
+  voideconomy.baltop:
+    default: true
+  voideconomy.auction:
+    default: true
+  voideconomy.auction.sell:
+    default: true
+  voideconomy.bounty:
+    default: true
+  voideconomy.bounty.place:
+    default: true
+  voideconomy.orders:
+    default: true
+  voideconomy.sell:
+    default: true
+  voideconomy.sell.hand:
+    default: true
+  voideconomy.sell.all:
+    default: true
+  voideconomy.sell.prices:
+    default: true
+  voideconomy.admin.sell:
+    default: op
+  voideconomy.admin.statistics:
+    default: op

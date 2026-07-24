@@ -1,0 +1,101 @@
+starting-balance: 100.00
+currency:
+  singular: coin
+  plural: coins
+  symbol: '$'
+  symbol-before-amount: true
+save-interval-seconds: 300
+transaction-history-limit: 500
+auction:
+  duration-hours: 48
+  maximum-active-listings: 10
+  minimum-price: 1.00
+  maximum-price: 1000000000.00
+marketplace:
+  transaction-fee-rate: 0.035
+statistics:
+  growth-thresholds:
+    stable-max: 3.0
+    moderate-max: 7.0
+    high-risk-max: 12.0
+sell:
+  enabled: true
+  materials:
+    ECHO_SHARD: {enabled: true, base-price: 300, minimum-price: 15, reference-quantity: 8, drop-rate: 0.10, recovery-half-life-hours: 24}
+    DIAMOND: {enabled: true, base-price: 150, minimum-price: 7.50, reference-quantity: 32, drop-rate: 0.05, recovery-half-life-hours: 12}
+    ANCIENT_DEBRIS: {enabled: true, base-price: 180, minimum-price: 9, reference-quantity: 16, drop-rate: 0.08, recovery-half-life-hours: 18}
+    NETHERITE_SCRAP: {enabled: true, base-price: 200, minimum-price: 10, reference-quantity: 16, drop-rate: 0.08, recovery-half-life-hours: 18}
+    NETHERITE_INGOT: {enabled: true, base-price: 820, minimum-price: 41, reference-quantity: 4, drop-rate: 0.10, recovery-half-life-hours: 24}
+    DRAGON_HEAD: {enabled: true, base-price: 1200, minimum-price: 60, reference-quantity: 1, drop-rate: 0.15, recovery-half-life-hours: 48}
+    HEAVY_CORE: {enabled: true, base-price: 800, minimum-price: 40, reference-quantity: 2, drop-rate: 0.12, recovery-half-life-hours: 36}
+    TRIAL_KEY: {enabled: true, base-price: 30, minimum-price: 1.50, reference-quantity: 16, drop-rate: 0.10, recovery-half-life-hours: 8}
+    OMINOUS_TRIAL_KEY: {enabled: true, base-price: 75, minimum-price: 3.75, reference-quantity: 8, drop-rate: 0.10, recovery-half-life-hours: 12}
+    COD: {enabled: true, base-price: 0.80, minimum-price: 0, reference-quantity: 64, drop-rate: 0.10, recovery-half-life-hours: 2}
+    SALMON: {enabled: true, base-price: 1.20, minimum-price: 0, reference-quantity: 64, drop-rate: 0.10, recovery-half-life-hours: 2}
+    PUFFERFISH: {enabled: true, base-price: 2, minimum-price: 0, reference-quantity: 32, drop-rate: 0.10, recovery-half-life-hours: 3}
+    TROPICAL_FISH: {enabled: true, base-price: 2.50, minimum-price: 0, reference-quantity: 32, drop-rate: 0.10, recovery-half-life-hours: 3}
+bounty:
+  minimum-amount: 100.00
+  placement-cooldown-seconds: 60
+  protect-server-operators: true
+orders:
+  maximum-active-orders: 10
+  expiry-days: 7
+  minimum-price-per-item: 1.00
+  maximum-quantity: 2304
+  # When enabled, every valid Minecraft item is available, including items added
+  # by future server updates. Set this to false to use allowed-materials instead.
+  include-all-materials: true
+  excluded-materials:
+    # All spawn eggs and known creative/operator-only items are also excluded
+    # automatically in code, including items introduced by future updates.
+    - LIGHT
+    - BARRIER
+    - DEBUG_STICK
+    - KNOWLEDGE_BOOK
+    - COMMAND_BLOCK
+    - CHAIN_COMMAND_BLOCK
+    - REPEATING_COMMAND_BLOCK
+    - COMMAND_BLOCK_MINECART
+    - STRUCTURE_BLOCK
+    - STRUCTURE_VOID
+    - JIGSAW
+    - SPAWNER
+    - BEDROCK
+    - END_PORTAL_FRAME
+    - REINFORCED_DEEPSLATE
+    - PETRIFIED_OAK_SLAB
+    - BUDDING_AMETHYST
+    - SUSPICIOUS_SAND
+    - SUSPICIOUS_GRAVEL
+    - TRIAL_SPAWNER
+    - VAULT
+    - FARMLAND
+    - DIRT_PATH
+    - FROSTED_ICE
+  allowed-materials:
+    - DIAMOND
+    - EMERALD
+    - GOLD_INGOT
+    - IRON_INGOT
+    - NETHERITE_INGOT
+    - COAL
+    - REDSTONE
+    - LAPIS_LAZULI
+    - ENDER_PEARL
+    - EXPERIENCE_BOTTLE
+    - ENCHANTED_BOOK
+    - POTION
+    - SPLASH_POTION
+    - LINGERING_POTION
+    - OBSIDIAN
+    - OAK_LOG
+    - COBBLESTONE
+messages:
+  prefix: '&8[&6Economy&8] '
+  no-permission: '&cYou do not have permission to do that.'
+  players-only: '&cOnly players can use this command.'
+  player-not-found: '&cThat player could not be found.'
+  invalid-amount: '&cEnter a positive amount with no more than 2 decimal places.'
+  insufficient-funds: '&cYou do not have enough money.'
+  cannot-pay-self: '&cYou cannot pay yourself.'
