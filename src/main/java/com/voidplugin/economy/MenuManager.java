@@ -111,7 +111,7 @@ final class MenuManager implements Listener, CommandExecutor {
         }
         if (args[0].equalsIgnoreCase("sell")) {
             if(!admin.hasPermission("voideconomy.admin.sell")){deny(admin);return;}
-            if(args.length==1||args[1].equalsIgnoreCase("list")){admin.performCommand("sell prices");return;}
+            if(args.length==1||args[1].equalsIgnoreCase("list")){openAdminSellMarkets(admin,0);return;}
             String action=args[1].toLowerCase();
             if(action.equals("freezeall")||action.equals("unfreezeall")){sell.setFrozen(action.equals("freezeall"));admin.sendMessage(text("Sell market freeze state updated.",NamedTextColor.GREEN));return;}
             if(action.equals("resetall")){sell.markets().forEach(m->sell.reset(m.material));admin.sendMessage(text("All sell prices reset.",NamedTextColor.GREEN));return;}
@@ -167,9 +167,9 @@ final class MenuManager implements Listener, CommandExecutor {
     void openHub(Player player) {
         Inventory menu = create(MenuType.HUB, null, null, null, "Server Hub", NamedTextColor.DARK_GRAY, 54);
         fill(menu);
-        menu.setItem(20, item(Material.GOLD_INGOT, "Bank", NamedTextColor.GOLD,
+        menu.setItem(20, item(Material.VAULT, "Bank", NamedTextColor.GOLD,
                 "View your balance, payments, and history"));
-        menu.setItem(21, item(Material.CHEST, "Auction House", NamedTextColor.AQUA,
+        menu.setItem(21, item(Material.LECTERN, "Auction House", NamedTextColor.AQUA,
                 "Browse and sell player items"));
         menu.setItem(22, item(Material.WRITABLE_BOOK, "Buy Orders", NamedTextColor.GREEN,
                 "Post requests or deliver materials for money"));
@@ -358,7 +358,7 @@ final class MenuManager implements Listener, CommandExecutor {
                 "Use /admin inspect <player>",
                 "Bounty contributions and claims are recorded"));
         menu.setItem(23,item(Material.EMERALD,"Sell Market Administration",NamedTextColor.GREEN,
-                "View floating prices","Command: /ve admin sell"));
+                "Manage prices, recovery, availability, and freezes","Command: /admin sell"));
         menu.setItem(24,item(Material.FILLED_MAP,"Economy Statistics",NamedTextColor.AQUA,
                 "Supply, generation, destruction, and net change","Command: /ve admin stats"));
         menu.setItem(25, item(Material.COMPARATOR, "Reload Configuration", NamedTextColor.GOLD,
@@ -452,6 +452,71 @@ final class MenuManager implements Listener, CommandExecutor {
         admin.openInventory(menu);
     }
 
+    private void openAdminSellMarkets(Player admin, int requestedPage) {
+        Inventory menu = create(MenuType.ADMIN_SELL, null, null, null,
+                "Admin: Sell Markets", NamedTextColor.DARK_RED, 54);
+        fill(menu);
+        List<SellService.Market> markets = sell.allMarkets();
+        int[] slots = {10,11,12,13,14,15,16,19,20,21,22,23,24,25,28,29,30,31,32,33,34};
+        int pages = Math.max(1, (markets.size() + slots.length - 1) / slots.length);
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+        MenuHolder holder = (MenuHolder) menu.getHolder(false);
+        holder.page = page;
+        for (int index = page * slots.length; index < Math.min((page + 1) * slots.length, markets.size()); index++) {
+            SellService.Market market = markets.get(index);
+            int displaySlot = slots[index - page * slots.length];
+            menu.setItem(displaySlot, item(market.material, market.material.name().replace('_', ' '),
+                    !market.enabled ? NamedTextColor.GRAY : sell.isFrozen(market) ? NamedTextColor.RED : NamedTextColor.GREEN,
+                    "Current: " + economy.format(market.current),
+                    "Base: " + economy.format(market.base),
+                    "Minimum: " + economy.format(market.minimum),
+                    "Full recovery: " + market.fullRecoveryHours + " hours",
+                    "Total sold: " + market.totalSold,
+                    "State: " + (!market.enabled ? "DISABLED" : sell.isFrozen(market) ? "FROZEN" : "ACTIVE"),
+                    "Click to manage this market"));
+            holder.materials.put(displaySlot, market.material);
+        }
+        menu.setItem(37, item(sell.isGloballyFrozen() ? Material.LIME_CONCRETE : Material.ICE,
+                sell.isGloballyFrozen() ? "Unfreeze All Markets" : "Freeze All Markets",
+                sell.isGloballyFrozen() ? NamedTextColor.GREEN : NamedTextColor.RED,
+                "Recovery and player sales are " + (sell.isGloballyFrozen() ? "currently paused" : "currently active")));
+        menu.setItem(38, item(Material.SPECTRAL_ARROW, "Previous Page", NamedTextColor.YELLOW));
+        menu.setItem(40, item(Material.CLOCK, "Refresh", NamedTextColor.GREEN));
+        menu.setItem(42, item(Material.SPECTRAL_ARROW, "Next Page", NamedTextColor.YELLOW));
+        menu.setItem(BACK_SLOT, backItem("Back to Admin"));
+        menu.setItem(CLOSE_SLOT, closeItem());
+        admin.openInventory(menu);
+    }
+
+    private void openAdminSellDetail(Player admin, Material material, int returnPage) {
+        SellService.Market market = sell.market(material);
+        if (market == null) { openAdminSellMarkets(admin, returnPage); return; }
+        Inventory menu = create(MenuType.ADMIN_SELL_DETAIL, null, null, null,
+                "Admin Market: " + material.name(), NamedTextColor.DARK_RED, 54);
+        fill(menu);
+        MenuHolder holder = (MenuHolder) menu.getHolder(false);
+        holder.page = returnPage;
+        holder.material = material;
+        menu.setItem(13, item(material, material.name().replace('_', ' '), NamedTextColor.GOLD,
+                "Current: " + economy.format(market.current), "Base: " + economy.format(market.base),
+                "Minimum: " + economy.format(market.minimum), "Reference quantity: " + market.reference,
+                "Drop rate: " + String.format(java.util.Locale.US, "%.2f%%", market.dropRate * 100),
+                "Full recovery: " + market.fullRecoveryHours + " hours", "Total sold: " + market.totalSold));
+        menu.setItem(20, item(market.enabled ? Material.REDSTONE_BLOCK : Material.EMERALD_BLOCK,
+                market.enabled ? "Disable Market" : "Enable Market",
+                market.enabled ? NamedTextColor.RED : NamedTextColor.GREEN,
+                market.enabled ? "Hide this material and stop player sales" : "Allow this material in the sell market"));
+        menu.setItem(22, item(market.frozen ? Material.LIME_CONCRETE : Material.ICE,
+                market.frozen ? "Unfreeze Recovery" : "Freeze Recovery",
+                market.frozen ? NamedTextColor.GREEN : NamedTextColor.AQUA,
+                "Applies only to this material"));
+        menu.setItem(24, item(Material.CLOCK, "Reset to Base Price", NamedTextColor.YELLOW,
+                "Current price will become " + economy.format(market.base)));
+        menu.setItem(BACK_SLOT, backItem("Back to Sell Administration"));
+        menu.setItem(CLOSE_SLOT, closeItem());
+        admin.openInventory(menu);
+    }
+
     private void openAdminMarketplaceConfirm(Player admin, MenuType type, UUID id) {
         Inventory menu = create(type, id, null, null, "Confirm Administrative Action", NamedTextColor.DARK_RED, 54);
         fill(menu);
@@ -481,7 +546,7 @@ final class MenuManager implements Listener, CommandExecutor {
                 else if (slot == 20) openAdminAuctions(player, 0);
                 else if (slot == 21) openAdminOrders(player, 0);
                 else if (slot == 22) player.performCommand("bounty");
-                else if (slot == 23) player.performCommand("sell prices");
+                else if (slot == 23) openAdminSellMarkets(player, 0);
                 else if (slot == 24) openStatistics(player,"all");
                 else if (slot == 25) { plugin.reloadConfig(); player.sendMessage(text("Configuration reloaded.", NamedTextColor.GREEN)); openAdminHome(player); }
                 else if (slot == BACK_SLOT) openHub(player);
@@ -507,6 +572,35 @@ final class MenuManager implements Listener, CommandExecutor {
                 else if (slot == 40) openAdminOrders(player, holder.page);
                 else if (slot == 42) openAdminOrders(player, holder.page + 1);
                 else if (slot == BACK_SLOT) openAdminHome(player);
+            }
+            case ADMIN_SELL -> {
+                Material material = holder.materials.get(slot);
+                if (material != null) openAdminSellDetail(player, material, holder.page);
+                else if (slot == 37) {
+                    sell.setFrozen(!sell.isGloballyFrozen());
+                    player.sendMessage(text(sell.isGloballyFrozen() ? "All sell markets are now frozen."
+                            : "All sell markets are now unfrozen.", NamedTextColor.GREEN));
+                    openAdminSellMarkets(player, holder.page);
+                } else if (slot == 38) openAdminSellMarkets(player, holder.page - 1);
+                else if (slot == 40) openAdminSellMarkets(player, holder.page);
+                else if (slot == 42) openAdminSellMarkets(player, holder.page + 1);
+                else if (slot == BACK_SLOT) openAdminHome(player);
+            }
+            case ADMIN_SELL_DETAIL -> {
+                SellService.Market market = holder.material == null ? null : sell.market(holder.material);
+                if (market == null) { openAdminSellMarkets(player, holder.page); break; }
+                if (slot == 20) {
+                    sell.configure(market.material, market.enabled ? "disable" : "enable", "");
+                    openAdminSellDetail(player, market.material, holder.page);
+                } else if (slot == 22) {
+                    sell.setFrozen(market.material, !market.frozen);
+                    openAdminSellDetail(player, market.material, holder.page);
+                } else if (slot == 24) {
+                    sell.reset(market.material);
+                    player.sendMessage(text(market.material.name().replace('_', ' ')
+                            + " was reset to its base price.", NamedTextColor.GREEN));
+                    openAdminSellDetail(player, market.material, holder.page);
+                } else if (slot == BACK_SLOT) openAdminSellMarkets(player, holder.page);
             }
             case ADMIN_AUCTION_CONFIRM -> {
                 if (slot == 20) {
@@ -792,7 +886,7 @@ final class MenuManager implements Listener, CommandExecutor {
     }
 
     private enum MenuType { HUB, BANK, PAY_AMOUNT, PAY_CONFIRM, HISTORY, LEADERBOARD, ADMIN_HOME,
-        ADMIN_ACCOUNT, ADMIN_HISTORY, ADMIN_AUCTIONS, ADMIN_ORDERS, ADMIN_AUCTION_CONFIRM,
+        ADMIN_ACCOUNT, ADMIN_HISTORY, ADMIN_AUCTIONS, ADMIN_ORDERS, ADMIN_SELL, ADMIN_SELL_DETAIL, ADMIN_AUCTION_CONFIRM,
         ADMIN_ORDER_CONFIRM, ADMIN_STATS, BANK_NOTE_WITHDRAW }
     private enum PromptType { PAY_TARGET, PAY_AMOUNT, ADMIN_TARGET, ADMIN_GIVE, ADMIN_TAKE, ADMIN_SET, ADMIN_RESET }
     private record Prompt(PromptType type, UUID targetId, String targetName) { }
@@ -802,6 +896,8 @@ final class MenuManager implements Listener, CommandExecutor {
         private final String targetName;
         private final BigDecimal amount;
         private final java.util.Map<Integer, UUID> ids = new java.util.HashMap<>();
+        private final java.util.Map<Integer, Material> materials = new java.util.HashMap<>();
+        private Material material;
         private int page;
         private Inventory inventory;
         private MenuHolder(MenuType type, UUID targetId, String targetName, BigDecimal amount) {

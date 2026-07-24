@@ -1,6 +1,8 @@
 com\voidplugin\economy\EconomyService.class
 com\voidplugin\economy\BountyManager$View.class
+com\voidplugin\economy\AuctionService$ListingType.class
 com\voidplugin\economy\SellManager$Holder.class
+com\voidplugin\economy\AuctionService$BidResult.class
 com\voidplugin\economy\VaultHook.class
 com\voidplugin\economy\AuctionManager$1.class
 com\voidplugin\economy\AuctionService$CollectResult.class
@@ -18,6 +20,7 @@ com\voidplugin\economy\MenuManager.class
 com\voidplugin\economy\AuctionService$Listing.class
 com\voidplugin\economy\OrderManager$Stage.class
 com\voidplugin\economy\AuctionManager$Category.class
+com\voidplugin\economy\AuctionService$BidStatus.class
 com\voidplugin\economy\AuctionService$Status.class
 com\voidplugin\economy\OrderService$ActionResult.class
 com\voidplugin\economy\SellManager$Pending.class

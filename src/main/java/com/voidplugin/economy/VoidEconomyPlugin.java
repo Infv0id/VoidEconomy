@@ -14,6 +14,8 @@ public final class VoidEconomyPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
         if (Math.abs(getConfig().getDouble("marketplace.transaction-fee-rate", 0.035) - 0.02) < 0.0000001) {
             getConfig().set("marketplace.transaction-fee-rate", 0.035);
             saveConfig();

@@ -1,5 +1,5 @@
 name: VoidEconomy
-version: '7.2.0'
+version: '7.5.0'
 main: com.voidplugin.economy.VoidEconomyPlugin
 api-version: '26.1.2'
 author: VoidPlugin
@@ -32,7 +32,7 @@ commands:
     usage: /balprivacy
   admin:
     description: Open the economy administration player search.
-    usage: /admin [auctions|orders|inspect|give|take|set|reset|reload] [player] [amount]
+    usage: /admin [auctions|orders|sell|inspect|give|take|set|reset|reload] [player] [amount]
     permission: voideconomy.admin
   ve:
     description: VoidEconomy help and administration.
@@ -51,6 +51,7 @@ commands:
   sell:
     description: Sell configured resources to the floating server market.
     usage: /sell [hand|all|price|prices]
+    aliases: [shop]
 
 permissions:
   voideconomy.balance:

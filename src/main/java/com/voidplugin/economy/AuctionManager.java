@@ -73,7 +73,7 @@ final class AuctionManager implements Listener, CommandExecutor {
         if (args.length == 2 && args[0].equalsIgnoreCase("sell")) {
             BigDecimal price = parsePrice(args[1]);
             if (price == null) player.sendMessage(text("Invalid auction price.", NamedTextColor.RED));
-            else createFromHand(player, price);
+            else createFromHand(player, price, AuctionService.ListingType.FIXED_PRICE);
             return true;
         }
         openBrowser(player, BrowserState.defaults());
@@ -154,21 +154,29 @@ final class AuctionManager implements Listener, CommandExecutor {
         ItemMeta meta = icon.getItemMeta();
         List<Component> lore = meta.hasLore() && meta.lore() != null ? new ArrayList<>(meta.lore()) : new ArrayList<>();
         lore.add(Component.empty());
-        lore.add(text("Price: " + economy.format(listing.price()), NamedTextColor.GOLD));
+        lore.add(text(listing.type()==AuctionService.ListingType.BID
+                ? (listing.buyerId()==null?"Starting bid: ":"Current bid: ")+economy.format(listing.price())
+                : "Price: " + economy.format(listing.price()), NamedTextColor.GOLD));
+        lore.add(text("Type: "+(listing.type()==AuctionService.ListingType.BID?"BIDDING":"BUY NOW"),NamedTextColor.AQUA));
+        if(listing.type()==AuctionService.ListingType.BID&&listing.buyerName()!=null)
+            lore.add(text("Highest bidder: "+listing.buyerName(),NamedTextColor.GRAY));
         lore.add(text("Seller: " + listing.sellerName(), NamedTextColor.GRAY));
         lore.add(text("Status: " + statusLabel(listing), statusColor(listing)));
         if (listing.status() == AuctionService.Status.ACTIVE)
             lore.add(text("Expires in: " + remaining(listing.expiresAt()), NamedTextColor.YELLOW));
         if (personal) {
             String action = switch (listing.status()) {
-                case ACTIVE -> "Click to manage or cancel";
+                case ACTIVE -> listing.type()==AuctionService.ListingType.BID&&listing.buyerId()!=null
+                        ?"Bids placed; listing cannot be cancelled":"Click to manage or cancel";
                 case SOLD -> listing.valueCollected() ? "Proceeds already collected" : "Click to collect proceeds";
                 case EXPIRED -> listing.valueCollected() ? "Item already collected" : "Click to collect item";
                 case CANCELLED -> "";
             };
+            if(listing.type()==AuctionService.ListingType.BID&&listing.status()==AuctionService.Status.SOLD
+                    &&viewerId.equals(listing.buyerId())&&!listing.itemDelivered())action="Click to collect your won item";
             if (!action.isBlank()) lore.add(text(action, NamedTextColor.AQUA));
         } else if (!listing.sellerId().equals(viewerId)) {
-            lore.add(text("Click to purchase", NamedTextColor.GREEN));
+            lore.add(text(listing.type()==AuctionService.ListingType.BID?"Click to place a bid":"Click to purchase", NamedTextColor.GREEN));
         }
         meta.lore(lore);
         icon.setItemMeta(meta);
@@ -190,6 +198,20 @@ final class AuctionManager implements Listener, CommandExecutor {
         player.openInventory(menu);
     }
 
+    private void openCreateType(Player player,BrowserState returnState){
+        AuctionHolder holder=new AuctionHolder(View.CREATE_TYPE,returnState,null);
+        Inventory menu=Bukkit.createInventory(holder,54,Component.text("Choose Listing Type",NamedTextColor.DARK_GREEN));
+        holder.inventory=menu;fill(menu);
+        menu.setItem(20,button(Material.EMERALD_BLOCK,"Buy Now Listing",NamedTextColor.GREEN,
+                "A buyer pays the full price immediately"));
+        menu.setItem(24,button(Material.GOLD_BLOCK,"Bid Listing",NamedTextColor.GOLD,
+                "Players compete by placing increasingly higher bids",
+                "The highest bidder wins when the timer expires"));
+        menu.setItem(45,button(Material.ARROW,"Back",NamedTextColor.YELLOW));
+        menu.setItem(CLOSE,button(Material.BARRIER,"Close",NamedTextColor.RED));
+        player.openInventory(menu);
+    }
+
     private void openManage(Player player, AuctionService.Listing listing, PersonalState returnState) {
         AuctionHolder holder = new AuctionHolder(View.MANAGE, null, returnState);
         holder.listingId = listing.id();
@@ -197,9 +219,14 @@ final class AuctionManager implements Listener, CommandExecutor {
         holder.inventory = menu;
         fill(menu);
         menu.setItem(22, listingIcon(listing, player.getUniqueId(), true));
-        if (listing.status() == AuctionService.Status.ACTIVE)
+        if (listing.status() == AuctionService.Status.ACTIVE&&
+                !(listing.type()==AuctionService.ListingType.BID&&listing.buyerId()!=null))
             menu.setItem(20, button(Material.RED_CONCRETE, "Cancel Listing", NamedTextColor.RED,
                     "The item is returned immediately"));
+        else if(listing.type()==AuctionService.ListingType.BID&&listing.status()==AuctionService.Status.SOLD
+                &&player.getUniqueId().equals(listing.buyerId())&&!listing.itemDelivered())
+            menu.setItem(20,button(Material.CHEST,"Collect Won Item",NamedTextColor.GREEN,
+                    "You won with a bid of "+economy.format(listing.price())));
         else if (listing.status() == AuctionService.Status.SOLD && !listing.valueCollected())
             menu.setItem(20, button(Material.GOLD_INGOT, "Collect " + economy.format(listing.price()),
                     NamedTextColor.GOLD, "Deposit proceeds into your balance"));
@@ -225,6 +252,11 @@ final class AuctionManager implements Listener, CommandExecutor {
             case PERSONAL -> clickPersonal(player, holder, slot);
             case BUY_CONFIRM -> clickBuy(player, holder, slot);
             case MANAGE -> clickManage(player, holder, slot);
+            case CREATE_TYPE -> {
+                if(slot==45)openBrowser(player,holder.browser);
+                else if(slot==20)prompt(player,PromptType.LIST_PRICE,holder.browser,AuctionService.ListingType.FIXED_PRICE,null);
+                else if(slot==24)prompt(player,PromptType.LIST_PRICE,holder.browser,AuctionService.ListingType.BID,null);
+            }
         }
     }
 
@@ -238,7 +270,9 @@ final class AuctionManager implements Listener, CommandExecutor {
                 openBrowser(player, state);
             } else if (listing.sellerId().equals(player.getUniqueId())) {
                 openManage(player, listing, PersonalState.defaults());
-            } else openBuyConfirmation(player, listing, state);
+            } else if(listing.type()==AuctionService.ListingType.BID)
+                prompt(player,PromptType.BID_AMOUNT,state,null,listing.id());
+            else openBuyConfirmation(player, listing, state);
         } else if (slot == PREVIOUS) openBrowser(player, state.withPage(state.page() - 1));
         else if (slot == NEXT) openBrowser(player, state.withPage(state.page() + 1));
         else if (slot == SORT) openBrowser(player, state.withSort(state.sort().next()));
@@ -246,9 +280,9 @@ final class AuctionManager implements Listener, CommandExecutor {
         else if (slot == REFRESH) openBrowser(player, state);
         else if (slot == SEARCH) {
             if (rightClick) openBrowser(player, state.withSearch(""));
-            else prompt(player, PromptType.SEARCH, state);
+            else prompt(player, PromptType.SEARCH, state,null,null);
         } else if (slot == MY_LISTINGS) openPersonal(player, PersonalState.defaults());
-        else if (slot == CREATE) prompt(player, PromptType.LIST_PRICE, state);
+        else if (slot == CREATE) openCreateType(player,state);
     }
 
     private void clickPersonal(Player player, AuctionHolder holder, int slot) {
@@ -262,7 +296,7 @@ final class AuctionManager implements Listener, CommandExecutor {
         else if (slot == 47) openPersonal(player, state.withStatus(state.status().next()));
         else if (slot == 48) openPersonal(player, state);
         else if (slot == 49) openBrowser(player, BrowserState.defaults());
-        else if (slot == CREATE) prompt(player, PromptType.LIST_PRICE, BrowserState.defaults());
+        else if (slot == CREATE) openCreateType(player,BrowserState.defaults());
     }
 
     private void clickBuy(Player player, AuctionHolder holder, int slot) {
@@ -277,6 +311,7 @@ final class AuctionManager implements Listener, CommandExecutor {
             case INSUFFICIENT_FUNDS -> player.sendMessage(text("You do not have enough money.", NamedTextColor.RED));
             case OWN_LISTING -> player.sendMessage(text("You cannot purchase your own listing.", NamedTextColor.RED));
             case UNAVAILABLE -> player.sendMessage(text("That listing is no longer available.", NamedTextColor.RED));
+            case BID_ONLY -> player.sendMessage(text("This listing accepts bids instead of direct purchases.",NamedTextColor.RED));
         }
         openBrowser(player, holder.browser);
     }
@@ -285,11 +320,14 @@ final class AuctionManager implements Listener, CommandExecutor {
         if (slot == 45) { openPersonal(player, holder.personal); return; }
         if (slot != 20) return;
         AuctionService.Listing listing = auctions.get(holder.listingId);
-        if (listing == null || !listing.sellerId().equals(player.getUniqueId())) {
+        boolean seller=listing!=null&&listing.sellerId().equals(player.getUniqueId());
+        boolean winningCollector=listing!=null&&listing.type()==AuctionService.ListingType.BID
+                &&player.getUniqueId().equals(listing.buyerId())&&listing.status()==AuctionService.Status.SOLD;
+        if (listing == null || (!seller&&!winningCollector)) {
             openPersonal(player, holder.personal);
             return;
         }
-        if (listing.status() == AuctionService.Status.ACTIVE) {
+        if (listing.status() == AuctionService.Status.ACTIVE&&seller) {
             ItemStack returned = auctions.cancel(listing.id(), player.getUniqueId());
             if (returned != null) {
                 give(player, returned);
@@ -325,30 +363,50 @@ final class AuctionManager implements Listener, CommandExecutor {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!event.getPlayer().isOnline()) return;
             if (prompt.type() == PromptType.SEARCH) openBrowser(event.getPlayer(), prompt.state().withSearch(input).withPage(0));
-            else {
+            else if(prompt.type()==PromptType.BID_AMOUNT){
+                BigDecimal amount=parsePrice(input);
+                if(amount==null){
+                    event.getPlayer().sendMessage(text("Invalid bid amount.",NamedTextColor.RED));
+                }else{
+                    AuctionService.BidResult result=auctions.bid(prompt.listingId(),event.getPlayer().getUniqueId(),event.getPlayer().getName(),amount);
+                    switch(result.result()){
+                        case SUCCESS->event.getPlayer().sendMessage(text("Bid placed: "+economy.format(amount)+".",NamedTextColor.GREEN));
+                        case TOO_LOW->event.getPlayer().sendMessage(text("Your bid must be at least "+economy.format(result.minimum())+".",NamedTextColor.RED));
+                        case INSUFFICIENT_FUNDS->event.getPlayer().sendMessage(text("You do not have enough money for that bid.",NamedTextColor.RED));
+                        case OWN_LISTING->event.getPlayer().sendMessage(text("You cannot bid on your own listing.",NamedTextColor.RED));
+                        case UNAVAILABLE->event.getPlayer().sendMessage(text("That bid listing is no longer available.",NamedTextColor.RED));
+                    }
+                }
+                openBrowser(event.getPlayer(),prompt.state());
+            } else {
                 BigDecimal price = parsePrice(input);
                 if (price == null) {
                     event.getPlayer().sendMessage(text("Invalid price. Listing was not created.", NamedTextColor.RED));
                     openBrowser(event.getPlayer(), prompt.state());
-                } else createFromHand(event.getPlayer(), price);
+                } else createFromHand(event.getPlayer(), price,prompt.listingType());
             }
         });
     }
 
-    private void prompt(Player player, PromptType type, BrowserState state) {
+    private void prompt(Player player, PromptType type, BrowserState state,
+                        AuctionService.ListingType listingType,UUID listingId) {
         if (type == PromptType.LIST_PRICE && !player.hasPermission("voideconomy.auction.sell")) {
             player.sendMessage(plugin.message("no-permission"));
             return;
         }
-        prompts.put(player.getUniqueId(), new Prompt(type, state));
+        prompts.put(player.getUniqueId(), new Prompt(type, state,listingType,listingId));
         player.closeInventory();
-        player.sendMessage(text(type == PromptType.SEARCH
-                ? "Type an item name to search for."
-                : "Hold the item you want to sell and type its price.", NamedTextColor.YELLOW));
+        String message=switch(type){
+            case SEARCH->"Type an item name to search for.";
+            case LIST_PRICE->"Hold the item you want to list and type its "
+                    +(listingType==AuctionService.ListingType.BID?"starting bid.":"buy-now price.");
+            case BID_AMOUNT->"Type the amount you want to bid.";
+        };
+        player.sendMessage(text(message, NamedTextColor.YELLOW));
         player.sendMessage(text("Your next chat message will not be public.", NamedTextColor.GRAY));
     }
 
-    private void createFromHand(Player player, BigDecimal price) {
+    private void createFromHand(Player player, BigDecimal price,AuctionService.ListingType type) {
         if (!player.hasPermission("voideconomy.auction.sell")) {
             player.sendMessage(plugin.message("no-permission"));
             return;
@@ -368,14 +426,15 @@ final class AuctionManager implements Listener, CommandExecutor {
         }
         ItemStack escrow = held.clone();
         player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-        AuctionService.Listing listing = auctions.create(player.getUniqueId(), player.getName(), escrow, price);
+        AuctionService.Listing listing = auctions.create(player.getUniqueId(), player.getName(), escrow, price,type);
         if (listing == null) {
             give(player, escrow);
             player.sendMessage(text("You have reached the maximum number of active listings.", NamedTextColor.RED));
         } else {
             BigDecimal fee=price.multiply(BigDecimal.valueOf(plugin.getConfig().getDouble("marketplace.transaction-fee-rate",.02))).setScale(2,java.math.RoundingMode.HALF_UP);
-            player.sendMessage(text("Listed " + friendlyName(escrow) + " for " + economy.format(price)
-                    + ". Fee on sale: " + economy.format(fee) + "; you receive: "
+            player.sendMessage(text("Listed " + friendlyName(escrow) + " with "
+                    +(type==AuctionService.ListingType.BID?"a starting bid of ":"a buy-now price of ")+economy.format(price)
+                    + ". Fee when completed: " + economy.format(fee) + "; you receive: "
                     + economy.format(price.subtract(fee)) + ".", NamedTextColor.GREEN));
         }
         openPersonal(player, PersonalState.defaults());
@@ -465,8 +524,8 @@ final class AuctionManager implements Listener, CommandExecutor {
         };
     }
 
-    private enum View { BROWSER, PERSONAL, BUY_CONFIRM, MANAGE }
-    private enum PromptType { SEARCH, LIST_PRICE }
+    private enum View { BROWSER, PERSONAL, BUY_CONFIRM, MANAGE, CREATE_TYPE }
+    private enum PromptType { SEARCH, LIST_PRICE, BID_AMOUNT }
     private enum Sort {
         NEWEST("Newest"), PRICE_LOW("Price: Low to High"), PRICE_HIGH("Price: High to Low");
         private final String label;
@@ -517,7 +576,7 @@ final class AuctionManager implements Listener, CommandExecutor {
         PersonalState withPage(int value) { return new PersonalState(Math.max(0, value), status); }
         PersonalState withStatus(PersonalFilter value) { return new PersonalState(0, value); }
     }
-    private record Prompt(PromptType type, BrowserState state) { }
+    private record Prompt(PromptType type, BrowserState state,AuctionService.ListingType listingType,UUID listingId) { }
 
     private static final class AuctionHolder implements InventoryHolder {
         private final View view;
