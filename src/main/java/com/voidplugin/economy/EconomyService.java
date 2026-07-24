@@ -52,6 +52,14 @@ public final class EconomyService {
 
     public void reset(UUID id) { balances.put(id, startingBalance()); }
     public void rememberName(UUID id, String name) { if (name != null && !name.isBlank()) names.put(id, name); }
+    public UUID accountId(String name) {
+        if (name == null) return null;
+        return names.entrySet().stream()
+                .filter(entry -> entry.getValue().equalsIgnoreCase(name))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
     public String accountName(UUID id) { return names.getOrDefault(id, id.toString()); }
     public boolean isPrivate(UUID id) { return privateAccounts.contains(id); }
     public boolean togglePrivacy(UUID id) {

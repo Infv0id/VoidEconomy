@@ -1,6 +1,7 @@
 com\voidplugin\economy\EconomyService.class
 com\voidplugin\economy\BountyManager$View.class
 com\voidplugin\economy\SellManager$Holder.class
+com\voidplugin\economy\VaultHook.class
 com\voidplugin\economy\AuctionManager$1.class
 com\voidplugin\economy\AuctionService$CollectResult.class
 com\voidplugin\economy\OrderManager$MarketState.class
@@ -33,6 +34,7 @@ com\voidplugin\economy\OrderManager$View.class
 com\voidplugin\economy\OrderManager$MaterialState.class
 com\voidplugin\economy\BountyService.class
 com\voidplugin\economy\SellManager.class
+com\voidplugin\economy\VaultHook$Provider.class
 com\voidplugin\economy\AuctionManager$PersonalState.class
 com\voidplugin\economy\OrderService$BuyOrder.class
 com\voidplugin\economy\OrderManager$Holder.class

@@ -4,6 +4,7 @@ main: com.voidplugin.economy.VoidEconomyPlugin
 api-version: '26.1.2'
 author: VoidPlugin
 description: A lightweight, persistent economy for Paper servers.
+softdepend: [Vault]
 
 commands:
   balance:

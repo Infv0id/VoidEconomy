@@ -63,6 +63,11 @@ public final class VoidEconomyPlugin extends JavaPlugin {
         if(sellCommand==null)throw new IllegalStateException("Command missing from plugin.yml: sell");
         sellCommand.setExecutor(sellManager);sellCommand.setTabCompleter(sellManager);
         getServer().getPluginManager().registerEvents(sellManager,this);
+        if (getServer().getPluginManager().isPluginEnabled("Vault")) {
+            VaultHook.register(this, economy);
+        } else {
+            getLogger().info("Vault not found; Vault economy integration is disabled.");
+        }
         long interval = Math.max(20L, getConfig().getLong("save-interval-seconds", 300L) * 20L);
         getServer().getScheduler().runTaskTimer(this, economy::save, interval, interval);
         getServer().getScheduler().runTaskTimer(this, bounties::save, interval, interval);
@@ -90,6 +95,7 @@ public final class VoidEconomyPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        getServer().getServicesManager().unregisterAll(this);
         if (economy != null) economy.save();
         if (auctions != null) auctions.save();
         if (bounties != null) bounties.save();

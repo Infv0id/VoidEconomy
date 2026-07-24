@@ -1,9 +1,10 @@
 name: VoidEconomy
-version: '7.1.0'
+version: '7.2.0'
 main: com.voidplugin.economy.VoidEconomyPlugin
 api-version: '26.1.2'
 author: VoidPlugin
 description: A lightweight, persistent economy for Paper servers.
+softdepend: [Vault]
 
 commands:
   balance:
